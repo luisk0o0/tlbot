@@ -1,7 +1,6 @@
 import os
 import deepl
 
-from langdetect import detect
 from deep_translator import GoogleTranslator
 
 from telegram import Update
@@ -14,10 +13,10 @@ from telegram.ext import (
 
 # Variables de entorno
 TOKEN = os.getenv("BOT_TOKEN")
-DEEPL_KEY = os.getenv("DEEPL_API_KEY")
+DEEPL_API_KEY = os.getenv("DEEPL_API_KEY")
 
-# Traductor DeepL
-deepl_translator = deepl.Translator(DEEPL_KEY)
+# Inicializar DeepL
+deepl_translator = deepl.Translator(DEEPL_API_KEY)
 
 # Idiomas del clan
 TARGET_LANGUAGES = {
@@ -26,16 +25,6 @@ TARGET_LANGUAGES = {
     "RU": "🇷🇺",
     "KO": "🇰🇷",
     "ZH": "🇨🇳",
-}
-
-# Conversión de detección de idioma
-LANG_DETECT_MAP = {
-    "es": "ES",
-    "en": "EN",
-    "ru": "RU",
-    "ko": "KO",
-    "zh-cn": "ZH",
-    "zh-tw": "ZH",
 }
 
 # Idiomas que usará DeepL
@@ -49,7 +38,7 @@ def translate_text(text, target_lang):
 
     try:
 
-        # DeepL
+        # Traducciones con DeepL
         if target_lang in DEEPL_LANGS:
 
             result = deepl_translator.translate_text(
@@ -59,7 +48,7 @@ def translate_text(text, target_lang):
 
             return result.text
 
-        # Google Translate
+        # Traducciones con Google Translate
         elif target_lang in GOOGLE_LANGS:
 
             google_map = {
@@ -89,7 +78,7 @@ async def translate_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text.strip()
 
-    # Ignorar mensajes muy cortos
+    # Ignorar mensajes cortos
     if len(text) < 2:
         return
 
@@ -103,15 +92,15 @@ async def translate_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
 
-        # Detectar idioma
-        detected_lang = detect(text)
+        # Detectar idioma con DeepL
+        detected = deepl_translator.translate_text(
+            text,
+            target_lang="EN"
+        )
 
-        print("Detected:", detected_lang)
+        source_lang = detected.detected_source_lang
 
-        # Convertir al formato usado
-        source_lang = LANG_DETECT_MAP.get(detected_lang)
-
-        print("Mapped:", source_lang)
+        print("Detected language:", source_lang)
 
         translations = []
 
