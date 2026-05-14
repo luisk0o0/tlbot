@@ -130,3 +130,6 @@ app.add_handler(
 print("Bot iniciado...")
 
 app.run_polling()
+
+
+
