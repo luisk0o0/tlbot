@@ -27,10 +27,10 @@ TARGET_LANGUAGES = {
     "ZH": "🇨🇳",
 }
 
-# Idiomas que usarán DeepL
+# Idiomas para DeepL
 DEEPL_LANGS = ["ES", "EN", "RU"]
 
-# Idiomas que usarán Google Translate
+# Idiomas para Google
 GOOGLE_LANGS = ["KO", "ZH"]
 
 
@@ -68,86 +68,79 @@ def translate_text(text, target_lang):
 
 async def translate_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    # Ignorar mensajes vacíos
-    if not update.message or not update.message.text:
-        return
-
-    # Ignorar bots
-    if update.effective_user.is_bot:
-        return
-
-    text = update.message.text.strip()
-
-    # Ignorar mensajes muy cortos
-    if len(text) < 2:
-        return
-
-    # Ignorar comandos
-    if text.startswith("/"):
-        return
-
-    # Ignorar links
-    if "http" in text:
-        return
-
     try:
 
-        # Detectar idioma con DeepL
-        detected = deepl_translator.translate_text(
-            text,
-            target_lang="EN"
-        )
+        # Verificar mensaje
+        if not update.message:
+            return
 
-        source_lang = detected.detected_source_lang
+        if not update.message.text:
+            return
 
-        print("Detected language:", source_lang)
+        # Ignorar bots
+        if update.effective_user.is_bot:
+            return
+
+        text = update.message.text.strip()
+
+        # Ignorar mensajes vacíos
+        if not text:
+            return
+
+        # Ignorar mensajes cortos
+        if len(text) < 2:
+            return
+
+        # Ignorar comandos
+        if text.startswith("/"):
+            return
+
+        # Ignorar links
+        if "http" in text:
+            return
 
         translations = []
 
         for lang_code, flag in TARGET_LANGUAGES.items():
 
-            # NO traducir al idioma original
-            if lang_code == source_lang:
-                continue
-
             translated = translate_text(text, lang_code)
 
-            print(lang_code, translated)
+            if not translated:
+                continue
 
-            if translated:
+            # Ignorar traducciones iguales
+            if translated.strip().lower() == text.strip().lower():
+                continue
 
-                # Ignorar traducciones iguales
-                if translated.strip().lower() == text.strip().lower():
-                    continue
-
-                translations.append(
-                    f"{flag} {translated}"
-                )
-
-        # Enviar traducciones
-        if translations:
-
-            sender_name = update.effective_user.first_name
-
-            final_text = (
-                f"🗣 {sender_name}:\n"
-                f"{text}\n\n"
-                + "\n\n".join(translations)
+            translations.append(
+                f"{flag} {translated}"
             )
 
-            await update.message.reply_text(
-                final_text,
-                reply_to_message_id=update.message.message_id
-            )
+        # Si no hay traducciones
+        if not translations:
+            return
+
+        sender_name = update.effective_user.first_name
+
+        final_text = (
+            f"🗣 {sender_name}:\n"
+            f"{text}\n\n"
+            + "\n\n".join(translations)
+        )
+
+        await update.message.reply_text(
+            final_text,
+            reply_to_message_id=update.message.message_id
+        )
 
     except Exception as e:
-        print("Error:", e)
+        print("Main error:", e)
 
 
 # Crear aplicación
 app = ApplicationBuilder().token(TOKEN).build()
 
-# Escuchar mensajes
+# Handler
 app.add_handler(
     MessageHandler(
         filters.TEXT & ~filters.COMMAND,
