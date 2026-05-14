@@ -12,31 +12,38 @@ from telegram.ext import (
     filters,
 )
 
+# Variables de entorno
 TOKEN = os.getenv("BOT_TOKEN")
 DEEPL_KEY = os.getenv("DEEPL_API_KEY")
 
+# Traductor DeepL
 deepl_translator = deepl.Translator(DEEPL_KEY)
 
+# Idiomas del clan
 TARGET_LANGUAGES = {
     "ES": "🇪🇸",
-    "EN-US": "🇬🇧",
+    "EN": "🇬🇧",
     "RU": "🇷🇺",
     "KO": "🇰🇷",
     "ZH": "🇨🇳",
 }
 
+# Conversión de detección de idioma
 LANG_DETECT_MAP = {
     "es": "ES",
-    "en": "EN-US",
+    "en": "EN",
     "ru": "RU",
     "ko": "KO",
     "zh-cn": "ZH",
     "zh-tw": "ZH",
 }
 
-DEEPL_LANGS = ["ES", "EN-US", "RU"]
+# Idiomas que usará DeepL
+DEEPL_LANGS = ["ES", "EN", "RU"]
 
+# Idiomas que usará Google Translate
 GOOGLE_LANGS = ["KO", "ZH"]
+
 
 def translate_text(text, target_lang):
 
@@ -52,7 +59,7 @@ def translate_text(text, target_lang):
 
             return result.text
 
-        # Google
+        # Google Translate
         elif target_lang in GOOGLE_LANGS:
 
             google_map = {
@@ -69,14 +76,20 @@ def translate_text(text, target_lang):
         print("Translation error:", e)
         return None
 
+
 async def translate_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+    # Ignorar mensajes vacíos
     if not update.message or not update.message.text:
+        return
+
+    # Ignorar bots
+    if update.effective_user.is_bot:
         return
 
     text = update.message.text.strip()
 
-    # Ignorar mensajes cortos
+    # Ignorar mensajes muy cortos
     if len(text) < 2:
         return
 
@@ -84,21 +97,33 @@ async def translate_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text.startswith("/"):
         return
 
+    # Ignorar links
+    if "http" in text:
+        return
+
     try:
 
+        # Detectar idioma
         detected_lang = detect(text)
 
+        print("Detected:", detected_lang)
+
+        # Convertir al formato usado
         source_lang = LANG_DETECT_MAP.get(detected_lang)
+
+        print("Mapped:", source_lang)
 
         translations = []
 
         for lang_code, flag in TARGET_LANGUAGES.items():
 
-            # No traducir al idioma original
+            # NO traducir al idioma original
             if lang_code == source_lang:
                 continue
 
             translated = translate_text(text, lang_code)
+
+            print(lang_code, translated)
 
             if translated:
 
@@ -106,9 +131,16 @@ async def translate_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"{flag} {translated}"
                 )
 
+        # Enviar traducciones
         if translations:
 
-            final_text = "\n\n".join(translations)
+            sender_name = update.effective_user.first_name
+
+            final_text = (
+                f"🗣 {sender_name}:\n"
+                f"{text}\n\n"
+                + "\n\n".join(translations)
+            )
 
             await update.message.reply_text(
                 final_text,
@@ -118,8 +150,11 @@ async def translate_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print("Error:", e)
 
+
+# Crear aplicación
 app = ApplicationBuilder().token(TOKEN).build()
 
+# Escuchar mensajes
 app.add_handler(
     MessageHandler(
         filters.TEXT & ~filters.COMMAND,
@@ -129,7 +164,5 @@ app.add_handler(
 
 print("Bot iniciado...")
 
+# Ejecutar bot
 app.run_polling()
-
-
-
