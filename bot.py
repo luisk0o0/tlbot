@@ -27,10 +27,10 @@ TARGET_LANGUAGES = {
     "ZH": "🇨🇳",
 }
 
-# Idiomas que usará DeepL
+# Idiomas que usarán DeepL
 DEEPL_LANGS = ["ES", "EN", "RU"]
 
-# Idiomas que usará Google Translate
+# Idiomas que usarán Google Translate
 GOOGLE_LANGS = ["KO", "ZH"]
 
 
@@ -38,7 +38,7 @@ def translate_text(text, target_lang):
 
     try:
 
-        # Traducciones con DeepL
+        # DeepL
         if target_lang in DEEPL_LANGS:
 
             result = deepl_translator.translate_text(
@@ -48,7 +48,7 @@ def translate_text(text, target_lang):
 
             return result.text
 
-        # Traducciones con Google Translate
+        # Google Translate
         elif target_lang in GOOGLE_LANGS:
 
             google_map = {
@@ -78,7 +78,7 @@ async def translate_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = update.message.text.strip()
 
-    # Ignorar mensajes cortos
+    # Ignorar mensajes muy cortos
     if len(text) < 2:
         return
 
@@ -115,6 +115,10 @@ async def translate_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             print(lang_code, translated)
 
             if translated:
+
+                # Ignorar traducciones iguales
+                if translated.strip().lower() == text.strip().lower():
+                    continue
 
                 translations.append(
                     f"{flag} {translated}"
