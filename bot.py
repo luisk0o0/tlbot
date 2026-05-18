@@ -1,4 +1,5 @@
 import os
+import re
 import deepl
 
 from deep_translator import GoogleTranslator
@@ -70,24 +71,27 @@ async def translate_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
 
-        # Verificar mensaje
         if not update.message:
-            return
-
-        if not update.message.text:
             return
 
         # Ignorar bots
         if update.effective_user.is_bot:
             return
 
-        text = update.message.text.strip()
+        text = ""
 
-        # Ignorar mensajes vacíos
+        # Texto normal
+        if update.message.text:
+            text = update.message.text.strip()
+
+        # Caption de imagen/video/documento
+        elif update.message.caption:
+            text = update.message.caption.strip()
+
         if not text:
             return
 
-        # Ignorar mensajes cortos
+        # Ignorar mensajes muy cortos
         if len(text) < 2:
             return
 
@@ -95,18 +99,38 @@ async def translate_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if text.startswith("/"):
             return
 
-        # Ignorar links
-        if "http" in text:
-            return
+        # Extraer URLs
+        urls = re.findall(r'https?://\S+', text)
+
+        # Reemplazar temporalmente URLs
+        temp_text = text
+
+        for i, url in enumerate(urls):
+
+            temp_text = temp_text.replace(
+                url,
+                f"__URL{i}__"
+            )
 
         translations = []
 
         for lang_code, flag in TARGET_LANGUAGES.items():
 
-            translated = translate_text(text, lang_code)
+            translated = translate_text(
+                temp_text,
+                lang_code
+            )
 
             if not translated:
                 continue
+
+            # Restaurar URLs
+            for i, url in enumerate(urls):
+
+                translated = translated.replace(
+                    f"__URL{i}__",
+                    url
+                )
 
             # Ignorar traducciones iguales
             if translated.strip().lower() == text.strip().lower():
@@ -140,10 +164,11 @@ async def translate_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Crear aplicación
 app = ApplicationBuilder().token(TOKEN).build()
 
-# Handler
+# Escuchar texto y captions
 app.add_handler(
     MessageHandler(
-        filters.TEXT & ~filters.COMMAND,
+        (filters.TEXT | filters.CAPTION)
+        & ~filters.COMMAND,
         translate_message
     )
 )
